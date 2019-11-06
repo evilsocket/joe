@@ -1,0 +1,10 @@
+description: "This is an example query for Joe."
+cache:
+  # 0 = None, 1 = by keys (+ optional ttl), 2 = by ttl
+  type: 1
+  # expression parameters to use for caching
+  keys: [table_name]
+  # ttl in seconds
+  ttl: 30
+expression:
+  SELECT * FROM information_schema.tables WHERE table_name = {table_name}
