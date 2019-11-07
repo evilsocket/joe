@@ -2,13 +2,17 @@ package api
 
 import (
 	"github.com/evilsocket/joe/models"
-	"github.com/go-chi/chi"
 	"github.com/wcharczuk/go-chart"
 	"net/http"
 )
 
 // GET /api/v1/queries/
 func (api *API) ListQueries(w http.ResponseWriter, r *http.Request) {
+	if user := getUser(r); user == nil {
+		ERROR(w, http.StatusUnauthorized, ErrEmpty)
+		return
+	}
+
 	queries := make([]*models.Query, 0)
 	models.Queries.Range(func(key, value interface{}) bool {
 		queries = append(queries, value.(*models.Query))
@@ -20,20 +24,28 @@ func (api *API) ListQueries(w http.ResponseWriter, r *http.Request) {
 
 // GET /api/v1/query/<name>/view
 func (api *API) ShowQuery(w http.ResponseWriter, r *http.Request) {
-	name := chi.URLParam(r, "name")
-	if q, found := models.Queries.Load(name); found {
-		JSON(w, http.StatusOK, q)
-	} else {
+	user := getUser(r)
+	name, _ := parseName("name", r)
+	if q := models.FindQuery(name); q == nil {
 		ERROR(w, http.StatusNotFound, ErrEmpty)
+	} else if q.Authorized(user) == false {
+		ERROR(w, http.StatusUnauthorized, ErrEmpty)
+	} else {
+		JSON(w, http.StatusOK, q)
 	}
 }
 
 // GET|POST /api/v1/query/<name>
 func (api *API) RunQuery(w http.ResponseWriter, r *http.Request) {
+	user := getUser(r)
 	name, ext := parseName("name", r)
-	if q, found := models.Queries.Load(name); found {
+	if q := models.FindQuery(name); q == nil {
+		ERROR(w, http.StatusNotFound, ErrEmpty)
+	} else if q.Authorized(user) == false {
+		ERROR(w, http.StatusUnauthorized, ErrEmpty)
+	} else {
 		params := parseParameters(r)
-		if rows, err := q.(*models.Query).Query(params); err != nil {
+		if rows, err := q.Query(params); err != nil {
 			ERROR(w, http.StatusBadRequest, err)
 		} else if ext == "csv" {
 			CSV(w, http.StatusOK, rows)
@@ -42,31 +54,36 @@ func (api *API) RunQuery(w http.ResponseWriter, r *http.Request) {
 		} else {
 			ERROR(w, http.StatusNotFound, ErrEmpty)
 		}
-	} else {
-		ERROR(w, http.StatusNotFound, ErrEmpty)
 	}
 }
 
 // GET|POST /api/v1/query/<name>/explain
 func (api *API) ExplainQuery(w http.ResponseWriter, r *http.Request) {
+	user := getUser(r)
 	name, _ := parseName("name", r)
-	if q, found := models.Queries.Load(name); found {
+	if q := models.FindQuery(name); q == nil {
+		ERROR(w, http.StatusNotFound, ErrEmpty)
+	} else if q.Authorized(user) == false {
+		ERROR(w, http.StatusUnauthorized, ErrEmpty)
+	} else {
 		params := parseParameters(r)
-		if rows, err := q.(*models.Query).Explain(params); err != nil {
+		if rows, err := q.Explain(params); err != nil {
 			ERROR(w, http.StatusBadRequest, err)
 		} else {
 			JSON(w, http.StatusOK, rows)
 		}
-	} else {
-		ERROR(w, http.StatusNotFound, ErrEmpty)
 	}
 }
 
 // GET|POST /api/v1/query/<name>/<view_name>
 func (api *API) RunView(w http.ResponseWriter, r *http.Request) {
+	user := getUser(r)
 	name, _ := parseName("name", r)
-	if q, found := models.Queries.Load(name); found {
-		query := q.(*models.Query)
+	if query := models.FindQuery(name); query == nil {
+		ERROR(w, http.StatusNotFound, ErrEmpty)
+	} else if query.Authorized(user) == false {
+		ERROR(w, http.StatusUnauthorized, ErrEmpty)
+	} else {
 		viewName, viewExt := parseName("view_name", r)
 		view := query.View(viewName)
 		if view == nil {
@@ -75,7 +92,7 @@ func (api *API) RunView(w http.ResponseWriter, r *http.Request) {
 		}
 
 		params := parseParameters(r)
-		rows, err := q.(*models.Query).Query(params)
+		rows, err := query.Query(params)
 		if err != nil {
 			ERROR(w, http.StatusBadRequest, err)
 			return
@@ -94,7 +111,5 @@ func (api *API) RunView(w http.ResponseWriter, r *http.Request) {
 		} else {
 			ERROR(w, http.StatusNotFound, ErrEmpty)
 		}
-	} else {
-		ERROR(w, http.StatusNotFound, ErrEmpty)
 	}
 }

@@ -7,20 +7,36 @@ import (
 	"github.com/evilsocket/islazy/log"
 	"github.com/joho/godotenv"
 	"os"
+	"sync"
 )
 
-var DB *sql.DB
+var (
+	DB         = (*sql.DB)(nil)
+	Queries    = sync.Map{}
+	NumQueries = 0
+	Users      = sync.Map{}
+	NumUsers   = 0
+)
+
+func FindQuery(name string) *Query {
+	if q, found := Queries.Load(name); found {
+		return q.(*Query)
+	}
+	return nil
+}
 
 func Cleanup() {
 	if DB != nil {
-		DB.Close()
+		if err := DB.Close(); err != nil {
+			fmt.Println(err)
+		}
 		DB = nil
 	}
 }
 
-func Setup(dataPath string, confFile string) (err error) {
+func Setup(confFile, dataPath, usersPath string) (err error) {
 	defer func() {
-		log.Info("loaded %d total queries", NumQueries)
+		log.Info("users:%d queries:%d", NumUsers, NumQueries)
 	}()
 
 	if err := godotenv.Load(confFile); err != nil {
@@ -42,6 +58,21 @@ func Setup(dataPath string, confFile string) (err error) {
 	} else if err = DB.Ping(); err != nil {
 		return
 	}
+
+	log.Info("loading users from %s ...", usersPath)
+	err = fs.Glob(usersPath, "*.yml", func(fileName string) error {
+		if user, err := LoadUser(fileName); err != nil {
+			return fmt.Errorf("error while loading %s: %v", fileName, err)
+		} else {
+			Users.Store(user.Username, user)
+			NumUsers++
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	Users.Store("anonymous", &User{})
 
 	log.Info("loading data from %s ...", dataPath)
 	return fs.Glob(dataPath, "*.yml", func(fileName string) error {

@@ -13,6 +13,9 @@ In a way it is an anti-[ORM](https://en.wikipedia.org/wiki/Object-relational_map
 First create an `/etc/joe/joe.conf` configuration file with the access credentials for the database:
 
 ```conf
+# CHANGE THIS: use a complex secret for the JWT token generation
+API_SECRET=02zygnJs5e0bBLJjaHCinWTjfRdheTYO
+
 DB_HOST=joe-mysql
 DB_DRIVER=mysql
 DB_USER=joe
@@ -21,11 +24,20 @@ DB_NAME=joe
 DB_PORT=3306
 ```
 
-Now let's create an `/etc/joe/queries/example.yml` file with our first example query (this query selects the top
- players [for this project](https://github.com/evilsocket/pwngrid)):
+Then create the `admin` user (this command will generate the file `/etc/joe/users/admin.yml`):
+
+    sudo mkdir -p /etc/joe/users
+    sudo joe -new-user admin -token-ttl 6 # JWT tokens for this user expire after 6 hours
+
+The next step is creating a `/etc/joe/queries/example.yml` file with our first example query (this query
+ selects the top players [for this project](https://github.com/evilsocket/pwngrid)):
 
 ```yaml
 description: "Top players by access points."
+
+# who can access this? use 'anonymous' to allow unauthenticated access
+access:
+  - admin
 
 # optional cache
 cache:
@@ -88,16 +100,21 @@ func View(res *models.Results) models.Chart {
 
 Now you can just start joe with:
 
-    joe -conf /etc/joe/joe.conf -data /etc/joe/queries
+    joe -conf /etc/joe/joe.conf -data /etc/joe/queries -users /etc/joe/users
     
 This will load the queries, compile the views and expose the following API endpoints automatically:
 
-* http://localhost:8080/api/v1/query/example.json?limit=20 to get JSON data.
-* http://localhost:8080/api/v1/query/example.csv?limit=20 to get CSV data.
-* http://localhost:8080/api/v1/query/example/explain to explain the query.
-* http://localhost:8080/api/v1/query/example/bars.png to get a PNG chart.
-* http://localhost:8080/api/v1/query/example/bars.svg to get a SVG chart.
- 
+* http://localhost:8080/api/v1/auth?user=admin&pass=somecomplexpasswordhere this will allow users to authenticate to
+ the API with username and password credentials. The endpoint will return a JWT `token` that must be passed to all
+  other endpoints for authentication.
+* http://localhost:8080/api/v1/query/example.json?token=thejwttokenhere&limit=20 to get JSON data.
+* http://localhost:8080/api/v1/query/example.csv?token=thejwttokenhere&limit=20 to get CSV data.
+* http://localhost:8080/api/v1/query/example/explain&token=thejwttokenhere to explain the query.
+* http://localhost:8080/api/v1/query/example/bars.png&token=thejwttokenhere to get a PNG chart.
+* http://localhost:8080/api/v1/query/example/bars.svg&token=thejwttokenhere to get a SVG chart.
+  
+Authentication and the `token` parameter are optional for queries that have the user `anonymous` in their `access` list.
+
 ## License
 
 `joe` is made with ♥  by [@evilsocket](https://twitter.com/evilsocket) and it is released under the GPL3 license.

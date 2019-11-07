@@ -28,7 +28,9 @@ type Query struct {
 	Defaults    map[string]interface{} `yaml:"defaults" json:"defaults"`
 	Expression  string                 `yaml:"query" json:"query"`
 	Views       map[string]string      `yaml:"views" json:"views"`
+	Access      []string               `yaml:"access" json:"access"`
 
+	access     map[string]*User
 	views      map[string]*View
 	fileName   string
 	statement  string
@@ -44,6 +46,7 @@ func LoadQuery(fileName string) (*Query, error) {
 	query := &Query{
 		fileName:   fileName,
 		parameters: make(map[string]int),
+		access:     make(map[string]*User),
 		views:      make(map[string]*View),
 	}
 
@@ -84,10 +87,23 @@ func (q *Query) load() error {
 		return err
 	} else if err = yaml.Unmarshal(raw, q); err != nil {
 		return err
+	} else if len(q.Access) == 0 {
+		return fmt.Errorf("%s doens't declare an access section", q.Name)
 	} else {
 		q.CreatedAt = t.BirthTime()
 		q.UpdatedAt = t.ModTime()
 		q.Name = strings.ReplaceAll(path.Base(q.fileName), ".yml", "")
+
+		for _, username := range q.Access {
+			if u, found := Users.Load(username); !found {
+				return fmt.Errorf("user %s not found", username)
+			} else {
+				q.access[username] = u.(*User)
+				if username == "anonymous" {
+					log.Warning("query %s allows anonymous access", q.Name)
+				}
+			}
+		}
 
 		// prepare the main statement
 		if err := q.prepare(); err != nil {
@@ -149,6 +165,22 @@ func (q *Query) toQueryArgs(params map[string]interface{}) ([]interface{}, error
 	}
 
 	return args, nil
+}
+
+func (q *Query) Authorized(user *User) bool {
+	// does allow anonymous access?
+	if _, found := q.access["anonymous"]; found {
+		return true
+	}
+	// sanity check
+	if user == nil {
+		return false
+	}
+	// check if included
+	if _, found := q.access[user.Username]; found {
+		return true
+	}
+	return false
 }
 
 func (q *Query) Query(params map[string]interface{}) (*Results, error) {

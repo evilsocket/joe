@@ -24,6 +24,10 @@ func Setup() (err error, api *API) {
 
 	api.Router.Route("/api", func(r chi.Router) {
 		r.Route("/v1", func(r chi.Router) {
+			// GET|POST /api/v1/auth
+			r.Get("/auth", api.Authenticate)
+			r.Post("/auth", api.Authenticate)
+
 			// GET /api/v1/queries/
 			r.Get("/queries", api.ListQueries)
 

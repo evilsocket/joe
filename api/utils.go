@@ -81,6 +81,8 @@ func parseParameters(r *http.Request) map[string]interface{} {
 		params[name] = values[0]
 	}
 
+	delete(params, "token")
+
 	return params
 }
 
@@ -134,13 +136,15 @@ func JSON(w http.ResponseWriter, statusCode int, data interface{}) {
 }
 
 func ERROR(w http.ResponseWriter, statusCode int, err error) {
-	if err != nil {
+	if err == nil {
+		JSON(w, http.StatusBadRequest, nil)
+	} else if err == ErrEmpty {
+		w.WriteHeader(statusCode)
+	} else {
 		JSON(w, statusCode, struct {
 			Error string `json:"error"`
 		}{
 			Error: err.Error(),
 		})
-		return
 	}
-	JSON(w, http.StatusBadRequest, nil)
 }
