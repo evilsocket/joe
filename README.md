@@ -8,6 +8,12 @@ In a way it is an anti-[ORM](https://en.wikipedia.org/wiki/Object-relational_map
 
 **WORK IN PROGRESS, DO NOT USE IN PRODUCTION**
 
+## How to Install
+
+```sh
+go get -u https://github.com/evilsocket/joe/cmd/joe
+```
+
 ## Example
 
 First create an `/etc/joe/joe.conf` configuration file with the access credentials for the database:
@@ -26,8 +32,10 @@ DB_PORT=3306
 
 Then create the `admin` user (this command will generate the file `/etc/joe/users/admin.yml`):
 
-    sudo mkdir -p /etc/joe/users
-    sudo joe -new-user admin -token-ttl 6 # JWT tokens for this user expire after 6 hours
+```sh
+sudo mkdir -p /etc/joe/users
+sudo joe -new-user admin -token-ttl 6 # JWT tokens for this user expire after 6 hours
+```
 
 The next step is creating a `/etc/joe/queries/example.yml` file with our first example query (this query
  selects the top players [for this project](https://github.com/evilsocket/pwngrid)):
@@ -100,7 +108,9 @@ func View(res *models.Results) models.Chart {
 
 Now you can just start joe with:
 
-    joe -conf /etc/joe/joe.conf -data /etc/joe/queries -users /etc/joe/users
+```sh
+joe -conf /etc/joe/joe.conf -data /etc/joe/queries -users /etc/joe/users
+```
     
 This will load the queries, compile the views and expose the following API endpoints automatically:
 
