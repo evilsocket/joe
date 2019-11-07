@@ -1,38 +1,102 @@
 # Joe
 
+Joe is a tool to automatically build a REST API around SQL queries and their resulting data. 
+
+In a way it is an anti-[ORM](https://en.wikipedia.org/wiki/Object-relational_mapping): its purpose is to help backend engineers versioning
+, annotating, exposing and charting the queries that can't be implemented or aren't worth implementing in the backend
+ main business logic and that they would normally keep on .txt or .sql files.
+
 **WORK IN PROGRESS, DO NOT USE IN PRODUCTION**
 
-Scenario: your company happens to have big amounts of historical data in one or more relational databases and a
- relatively complex backend wrapping the business logic around this data. But it doesn't matter how complex this
-  backend gets, your users will always find those few corner cases that:
+## Example
 
-* Are not worth implementing as a whole new feature for the backend, being extremely specific to that instance / request.
-* Are still something that must be done every few days or weeks.
+First create an `/etc/joe/joe.conf` configuration file with the access credentials for the database:
 
-So you either implement stored procedures and views from the database side of things, but then you need to give access 
-to the database to people that are not DBA and don't know SQL.
+```conf
+DB_HOST=joe-mysql
+DB_DRIVER=mysql
+DB_USER=joe
+DB_PASSWORD=joe
+DB_NAME=joe
+DB_PORT=3306
+```
 
-Or you duplicate all of your relational data to an Elastic search or whatever other stack that allows you to use tools 
-such as Kibana. But this means not only duplicating data, but also integrating a bunch of new technologies just to have 
-basic charts, csv files and answer your C*O's question of the week.
+Now let's create an `/etc/joe/queries/example.yml` file with our first example query (this query selects the top
+ players [for this project](https://github.com/evilsocket/pwngrid)):
 
-Or you keep .sql/.txt files all over your computer with all the queries your coworkers ask you periodically to run.
+```yaml
+description: "Top players by access points."
 
-So I thought about Joe.
+# optional cache
+cache:
+  # 0 = None, 1 = by keys (+ optional ttl), 2 = by ttl
+  type: 1
+  # expression parameters to use for caching
+  keys: [limit]
+  # ttl in seconds
+  ttl: 30
 
-![joe](https://i.imgur.com/X6exz98.png)
+# the query itself
+query:
+  SELECT  u.updated_at as active_at, u.name, u.fingerprint, u.country, COUNT(a.id) AS networks FROM units u
+  INNER JOIN access_points a ON u.id = a.unit_id GROUP BY u.id ORDER BY networks DESC LIMIT {limit}
 
-Joe is a very simple microservice written in Go that allows you to:
+# optional default values for the parameters
+defaults:
+  limit: 25
 
-* Version and annotate SQL queries (for several types of relational databases all handled transparently by the service).
-* Those queries, used as statements, therefore parametrized, will be wrapped in an automatically generated REST API that
- can be just called from CURL (with JWT or http based authentication).
-* The output, processed by the meta engine (that will analyze the format of the output and apply transformation and caching policies), will be available as simple, paginated and normalized JSON output.
-* This JSON output, that can be already used directly from a researcher or whatever, will be optionally connected to the presentation engine, that will expose the data in different ways than JSON, such as charts created automatically if temporal data is detected, searchable datagrids with paging, simple transformations like JSON -> CSV and so on.
+# define a chart
+views:
+  bars: example_view.go
+```
 
-All of the above and more, by just storing the query ... instead of using those txt files you keep around your
- computer :D It's basically a weird mix of a smart phpmyadmin, stored procedures, git (for annotation and versioning), 
- kibana (for charting) and  ... things :D
+The `example_view.go` is a view plugin that generates a chart from the selected records, by defining these views joe
+ can generate PNG or SVG charts:
+
+```go
+package main
+
+import (
+	"github.com/wcharczuk/go-chart"
+	"github.com/evilsocket/joe/models"
+)
+
+func View(res *models.Results) models.Chart {
+	ch := chart.BarChart{
+		Title: "Top Players",
+		TitleStyle: chart.Style {
+			Hidden: false,
+		},
+		Background: chart.Style{
+			Padding: chart.Box{
+				Top: 40,
+			},
+		},
+		Bars: make([]chart.Value, res.NumRows),
+	}
+
+	for i, row := range res.Rows {
+		ch.Bars[i] = chart.Value{
+			Label: row["name"].(string),
+			Value: float64(row["networks"].(int64)),
+		}
+	}
+
+	return ch
+}
+```
+
+Now you can just start joe with:
+
+    joe -conf /etc/joe/joe.conf -data /etc/joe/queries
+    
+This will load the queries, compile the views and expose the following API endpoints automatically:
+
+* http://localhost:8080/api/v1/query/example.json?limit=20 to get JSON data.
+* http://localhost:8080/api/v1/query/example.csv?limit=20 to get CSV data.
+* http://localhost:8080/api/v1/query/example/explain to explain the query.
+* http://localhost:8080/api/v1/query/example/bars.png to get a PNG chart.
+* http://localhost:8080/api/v1/query/example/bars.svg to get a SVG chart.
  
 ## License
 
