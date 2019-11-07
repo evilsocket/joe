@@ -1,9 +1,9 @@
 package api
 
 import (
+	"github.com/evilsocket/islazy/log"
 	"github.com/evilsocket/islazy/tui"
 	"github.com/evilsocket/joe/models"
-	"github.com/evilsocket/islazy/log"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"net/http"
@@ -26,12 +26,24 @@ func Setup() (err error, api *API) {
 		r.Route("/v1", func(r chi.Router) {
 			// GET /api/v1/queries/
 			r.Get("/queries", api.ListQueries)
+
+			// GET /api/v1/query/<name>/view
+			r.Get("/query/{name:.+}/view", api.ShowQuery)
+
 			// GET /api/v1/query/<name>
 			r.Get("/query/{name:.+}", api.RunQuery)
 			// POST /api/v1/query/<name>
 			r.Post("/query/{name:.+}", api.RunQuery)
+
 			// POST /api/v1/query/<name>/explain
 			r.Post("/query/{name:.+}/explain", api.ExplainQuery)
+			// GET /api/v1/query/<name>/explain
+			r.Get("/query/{name:.+}/explain", api.ExplainQuery)
+
+			// GET /api/v1/query/<name>/<view_name>
+			r.Get("/query/{name:.+}/{view_name:.+}", api.RunView)
+			// POST /api/v1/query/<name>/<view_name>
+			r.Post("/query/{name:.+}/{view_name:.+}", api.RunView)
 		})
 	})
 
@@ -42,8 +54,14 @@ func (api *API) Run(addr string) {
 	log.Info("joe api starting on %s ...", addr)
 
 	models.Queries.Range(func(key, value interface{}) bool {
-		log.Info("  http://%s/api/v1/query/%s(.json|csv)(/explain?)", addr, key)
-		log.Info("    %s", tui.Dim(value.(*models.Query).Expression))
+		q := value.(*models.Query)
+		log.Info("  %s", tui.Dim(q.Expression))
+		log.Info("    http://%s/api/v1/query/%s(.json|csv)(/explain?)", addr, key)
+
+		for name, _ := range q.Views {
+			log.Info("      http://%s/api/v1/query/%s/%s(.png|svg)", addr, key, name)
+		}
+
 		return true
 	})
 

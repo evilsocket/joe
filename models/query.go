@@ -26,8 +26,10 @@ type Query struct {
 	Cache       *CachePolicy           `yaml:"cache" json:"cache"`
 	Description string                 `yaml:"description" json:"description"`
 	Defaults    map[string]interface{} `yaml:"defaults" json:"defaults"`
-	Expression  string                 `yaml:"expression" json:"expression"`
+	Expression  string                 `yaml:"query" json:"query"`
+	Views       map[string]string      `yaml:"views" json:"views"`
 
+	views      map[string]*View
 	fileName   string
 	statement  string
 	parameters map[string]int
@@ -42,6 +44,7 @@ func LoadQuery(fileName string) (*Query, error) {
 	query := &Query{
 		fileName:   fileName,
 		parameters: make(map[string]int),
+		views:      make(map[string]*View),
 	}
 
 	if raw, err := ioutil.ReadFile(fileName); err != nil {
@@ -86,10 +89,12 @@ func (q *Query) load() error {
 		q.UpdatedAt = t.ModTime()
 		q.Name = strings.ReplaceAll(path.Base(q.fileName), ".yml", "")
 
+		// prepare the main statement
 		if err := q.prepare(); err != nil {
 			return err
 		}
 
+		// prepare the explain statement
 		explain := fmt.Sprintf("EXPLAIN %s", q.Expression)
 		q.explainer = &Query{
 			Expression: explain,
@@ -100,6 +105,20 @@ func (q *Query) load() error {
 
 		if err := q.explainer.prepare(); err != nil {
 			return err
+		}
+
+		// load views
+		for viewName, viewFileName := range q.Views {
+			if viewFileName != "" {
+				if viewFileName[0] != '/' && viewFileName[0] != '.' {
+					viewFileName = path.Join(path.Dir(q.fileName), viewFileName)
+				}
+			}
+			if view, err := PrepareView(q.Name, viewName, viewFileName); err != nil {
+				return fmt.Errorf("%s: %v", viewName, err)
+			} else {
+				q.views[viewName] = view
+			}
 		}
 
 		log.Debug("loaded %v", q)
@@ -132,13 +151,13 @@ func (q *Query) toQueryArgs(params map[string]interface{}) ([]interface{}, error
 	return args, nil
 }
 
-func (q *Query) Query(params map[string]interface{}) (*Rows, error) {
+func (q *Query) Query(params map[string]interface{}) (*Results, error) {
 	log.Debug("running '%s' with %s", q.statement, params)
 
 	begin := time.Now()
 
 	if cached := q.Cache.Get(params); cached != nil {
-		rows := cached.Data.(*Rows)
+		rows := cached.Data.(*Results)
 		rows.CachedAt = &cached.At
 		rows.ExecutionTime = time.Since(begin)
 		return rows, nil
@@ -158,7 +177,7 @@ func (q *Query) Query(params map[string]interface{}) (*Rows, error) {
 	}
 	defer dbRows.Close()
 
-	rows := &Rows{
+	rows := &Results{
 		Rows: make([]Row, 0),
 	}
 
@@ -200,6 +219,13 @@ func (q *Query) Query(params map[string]interface{}) (*Rows, error) {
 	return rows, nil
 }
 
-func (q *Query) Explain(params map[string]interface{}) (*Rows, error) {
+func (q *Query) View(name string) *View {
+	if v, found := q.views[name]; found {
+		return v
+	}
+	return nil
+}
+
+func (q *Query) Explain(params map[string]interface{}) (*Results, error) {
 	return q.explainer.Query(params)
 }

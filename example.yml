@@ -1,4 +1,6 @@
 description: "This is an example query for Joe."
+
+# optional cache
 cache:
   # 0 = None, 1 = by keys (+ optional ttl), 2 = by ttl
   type: 1
@@ -6,5 +8,15 @@ cache:
   keys: [table_name]
   # ttl in seconds
   ttl: 30
-expression:
+
+# optional defaults
+defaults:
+  table_name: tables
+
+# the query itself
+query:
   SELECT * FROM information_schema.tables WHERE table_name = {table_name}
+
+# create charts
+views:
+  bar: example_view.go

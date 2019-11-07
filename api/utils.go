@@ -53,16 +53,14 @@ func pageNum(r *http.Request) (int, error) {
 	return strconv.Atoi(pageParam)
 }
 
-func parseQueryName(r *http.Request) (name, ext string) {
+func parseName(paramName string, r *http.Request) (name, ext string) {
 	ext = "json"
-	name = chi.URLParam(r, "name")
-
+	name = chi.URLParam(r, paramName)
 	parts := strings.Split(name, ".")
 	if numParts := len(parts); numParts > 1 {
 		ext = parts[numParts-1]
 		name = strings.Join(parts[:numParts-1], ".")
 	}
-
 	return
 }
 
@@ -86,7 +84,7 @@ func parseParameters(r *http.Request) map[string]interface{} {
 	return params
 }
 
-func CSV(w http.ResponseWriter, statusCode int, rows *models.Rows) {
+func CSV(w http.ResponseWriter, statusCode int, rows *models.Results) {
 	buf := bytes.Buffer{}
 	wr := csv.NewWriter(&buf)
 
