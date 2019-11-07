@@ -20,7 +20,7 @@ Or you keep .sql/.txt files all over your computer with all the queries your cow
 
 So I thought about Joe.
 
-![joe](https://i.imgur.com/EtzqrVe.png)
+![joe](https://i.imgur.com/X6exz98.png)
 
 Joe is a very simple microservice written in Go that allows you to:
 
