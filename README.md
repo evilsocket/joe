@@ -117,13 +117,18 @@ This will load the queries, compile the views and expose the following API endpo
 * http://localhost:8080/api/v1/auth?user=admin&pass=somecomplexpasswordhere this will allow users to authenticate to
  the API with username and password credentials. The endpoint will return a JWT `token` that must be passed to all
   other endpoints for authentication.
-* http://localhost:8080/api/v1/query/example.json?token=thejwttokenhere&limit=20 to get JSON data.
-* http://localhost:8080/api/v1/query/example.csv?token=thejwttokenhere&limit=20 to get CSV data.
-* http://localhost:8080/api/v1/query/example/explain&token=thejwttokenhere to explain the query.
-* http://localhost:8080/api/v1/query/example/bars.png&token=thejwttokenhere to get a PNG chart.
-* http://localhost:8080/api/v1/query/example/bars.svg&token=thejwttokenhere to get a SVG chart.
-  
-Authentication and the `token` parameter are optional for queries that have the user `anonymous` in their `access` list.
+* http://localhost:8080/api/v1/query/example.json?limit=20 to get JSON data.
+* http://localhost:8080/api/v1/query/example.csv?limit=20 to get CSV data.
+* http://localhost:8080/api/v1/query/example/explain to explain the query.
+* http://localhost:8080/api/v1/query/example/bars.png to get a PNG chart.
+* http://localhost:8080/api/v1/query/example/bars.svg to get a SVG chart.
+
+While the JWT `token` can be passed to each endpoint either as a GET or POST parameter, it is recommended to pass it via
+the `Authorization` header (`Authorization: bearer put-the-token-here`).
+
+Both the authentication process and the `token` parameter itself are optional for queries that have the user `anonymous
+` in their
+ `access` list.
 
 ## License
 
