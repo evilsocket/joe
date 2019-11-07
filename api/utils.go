@@ -66,6 +66,26 @@ func parseQueryName(r *http.Request) (name, ext string) {
 	return
 }
 
+func parseParameters(r *http.Request) map[string]interface{} {
+	params := make(map[string]interface{})
+
+	// from POST
+	if err := r.ParseForm(); err == nil {
+		for key, values := range r.PostForm {
+			params[key] = values[0]
+		}
+	} else {
+		log.Warning("error parsing form: %v", err)
+	}
+
+	// from GET
+	for name, values := range r.URL.Query() {
+		params[name] = values[0]
+	}
+
+	return params
+}
+
 func CSV(w http.ResponseWriter, statusCode int, rows *models.Rows) {
 	buf := bytes.Buffer{}
 	wr := csv.NewWriter(&buf)
