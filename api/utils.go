@@ -1,9 +1,14 @@
 package api
 
 import (
+	"bytes"
+	"encoding/csv"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/evilsocket/islazy/log"
+	"github.com/evilsocket/joe/models"
+	"github.com/go-chi/chi"
 	"net/http"
 	"strconv"
 	"strings"
@@ -46,6 +51,51 @@ func pageNum(r *http.Request) (int, error) {
 		pageParam = "1"
 	}
 	return strconv.Atoi(pageParam)
+}
+
+func parseQueryName(r *http.Request) (name, ext string) {
+	ext = "json"
+	name = chi.URLParam(r, "name")
+
+	parts := strings.Split(name, ".")
+	if numParts := len(parts); numParts > 1 {
+		ext = parts[numParts-1]
+		name = strings.Join(parts[:numParts-1], ".")
+	}
+
+	return
+}
+
+func CSV(w http.ResponseWriter, statusCode int, rows *models.Rows) {
+	buf := bytes.Buffer{}
+	wr := csv.NewWriter(&buf)
+
+	if err := wr.Write(rows.ColumnNames); err != nil {
+		log.Error("error sending response: %v", err)
+		return
+	}
+
+	for _, row := range rows.Rows {
+		values := make([]string, rows.NumColumns)
+		for idx, col := range rows.ColumnNames {
+			values[idx] = fmt.Sprintf("%v", row[col])
+		}
+
+		if err := wr.Write(values); err != nil {
+			log.Error("error sending response: %v", err)
+			return
+		}
+	}
+	wr.Flush()
+
+	w.Header().Set("Content-Type", "text/csv")
+	w.WriteHeader(statusCode)
+
+	if sent, err := w.Write(buf.Bytes()); err != nil {
+		log.Error("error sending response: %v", err)
+	} else {
+		log.Debug("sent %d bytes of csv response", sent)
+	}
 }
 
 func JSON(w http.ResponseWriter, statusCode int, data interface{}) {

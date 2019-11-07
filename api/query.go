@@ -31,7 +31,7 @@ func (api *API) ShowQuery(w http.ResponseWriter, r *http.Request) {
 
 // POST /api/v1/query/<name>
 func (api *API) RunQuery(w http.ResponseWriter, r *http.Request) {
-	name := chi.URLParam(r, "name")
+	name, ext := parseQueryName(r)
 	if q, found := models.Queries.Load(name); found {
 		params := make(map[string]interface{})
 		if err := r.ParseForm(); err == nil {
@@ -44,6 +44,8 @@ func (api *API) RunQuery(w http.ResponseWriter, r *http.Request) {
 
 		if rows, err := q.(*models.Query).Query(params); err != nil {
 			ERROR(w, http.StatusBadRequest, err)
+		} else if ext == "csv" {
+			CSV(w, http.StatusOK, rows)
 		} else {
 			JSON(w, http.StatusOK, rows)
 		}
