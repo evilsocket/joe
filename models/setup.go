@@ -10,6 +10,9 @@ import (
 	"os"
 	"sync"
 	"sync/atomic"
+
+	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/lib/pq"
 )
 
 var (
