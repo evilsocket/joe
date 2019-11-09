@@ -3,17 +3,19 @@ package models
 import (
 	"database/sql"
 	"fmt"
+	"github.com/evilsocket/islazy/async"
 	"github.com/evilsocket/islazy/fs"
 	"github.com/evilsocket/islazy/log"
 	"github.com/joho/godotenv"
 	"os"
 	"sync"
+	"sync/atomic"
 )
 
 var (
 	DB         = (*sql.DB)(nil)
 	Queries    = sync.Map{}
-	NumQueries = 0
+	NumQueries = uint64(0)
 	Users      = sync.Map{}
 	NumUsers   = 0
 )
@@ -74,14 +76,23 @@ func Setup(confFile, dataPath, usersPath string) (err error) {
 	}
 	Users.Store("anonymous", &User{})
 
-	log.Info("loading data from %s ...", dataPath)
-	return fs.Glob(dataPath, "*.yml", func(fileName string) error {
+	// since each query must be prepared and might potentially require compilation of
+	// its view files, run this in a workers queue in order to parallelize
+	queue := async.NewQueue(0, func(arg async.Job) {
+		fileName := arg.(string)
 		if query, err := LoadQuery(fileName); err != nil {
-			return fmt.Errorf("error while loading %s: %v", fileName, err)
+			log.Error("error while loading %s: %v", fileName, err)
 		} else {
 			Queries.Store(query.Name, query)
-			NumQueries++
+			atomic.AddUint64(&NumQueries, 1)
 		}
+	})
+
+	log.Info("loading data from %s ...", dataPath)
+	err = fs.Glob(dataPath, "*.yml", func(fileName string) error {
+		queue.Add(async.Job(fileName))
 		return nil
 	})
+	queue.WaitDone()
+	return err
 }

@@ -1,14 +1,11 @@
 package models
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
 	"github.com/evilsocket/islazy/fs"
 	"github.com/evilsocket/islazy/log"
 	"github.com/wcharczuk/go-chart"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
@@ -59,29 +56,14 @@ func PrepareView(queryName, viewName, viewFileName string) (view *View, err erro
 	basePath := path.Dir(viewFileName)
 
 	if strings.HasSuffix(viewFileName, ".go") {
-		// hash the file
-		var raw []byte
-		raw, err = ioutil.ReadFile(viewFileName)
-		if err != nil {
-			return
-		}
-		hash := sha256.New()
-		hash.Write(raw)
-
-		hex.EncodeToString(hash.Sum(nil))
-
 		view.SourceFileName = viewFileName
 		view.NativeFileName = path.Join(basePath, fmt.Sprintf(
-			"%s_%s_%s.so",
+			"%s_%s.so",
 			queryName,
-			viewName,
-			hex.EncodeToString(hash.Sum(nil))))
+			viewName))
 
 		// check if the file has already been compiled
 		if fs.Exists(view.NativeFileName) == false {
-			// check for older versions to remove
-			cleanAllBut(basePath, view.NativeFileName, "*.so")
-
 			goPath, err := exec.LookPath("go")
 			if err != nil {
 				return nil, fmt.Errorf("go not found, can't compile %s", viewFileName)
