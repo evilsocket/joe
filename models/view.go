@@ -2,7 +2,6 @@ package models
 
 import (
 	"fmt"
-	"github.com/evilsocket/islazy/fs"
 	"github.com/evilsocket/islazy/log"
 	"github.com/wcharczuk/go-chart"
 	"io"
@@ -25,24 +24,6 @@ type View struct {
 
 	plugin *plugin.Plugin
 	cb     func(*Results) Chart
-}
-
-func cleanAllBut(basePath, exclude, expr string) {
-	var err error
-	err = fs.Glob(basePath, expr, func(fileName string) error {
-		if fileName, err = filepath.Abs(fileName); err != nil {
-			return err
-		} else if fileName != exclude {
-			log.Debug("removing %s", fileName)
-			if err = os.Remove(fileName); err != nil {
-				log.Error("error removing %s: %v", fileName, err)
-			}
-		}
-		return nil
-	})
-	if err != nil {
-		log.Error("%v", err)
-	}
 }
 
 func PrepareView(queryName, viewName, viewFileName string) (view *View, err error) {
