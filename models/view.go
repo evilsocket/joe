@@ -62,30 +62,27 @@ func PrepareView(queryName, viewName, viewFileName string) (view *View, err erro
 			queryName,
 			viewName))
 
-		// check if the file has already been compiled
-		if fs.Exists(view.NativeFileName) == false {
-			goPath, err := exec.LookPath("go")
-			if err != nil {
-				return nil, fmt.Errorf("go not found, can't compile %s", viewFileName)
-			}
+		goPath, err := exec.LookPath("go")
+		if err != nil {
+			return nil, fmt.Errorf("go not found, can't compile %s", viewFileName)
+		}
 
-			log.Info("compiling %s ...", viewFileName)
+		log.Info("compiling %s ...", viewFileName)
 
-			cmdLine := fmt.Sprintf("%s build -buildmode=plugin -o '%s' '%s'",
-				goPath,
-				view.NativeFileName,
-				view.SourceFileName)
+		cmdLine := fmt.Sprintf("%s build -buildmode=plugin -o '%s' '%s'",
+			goPath,
+			view.NativeFileName,
+			view.SourceFileName)
 
-			log.Debug("%s", cmdLine)
+		log.Debug("%s", cmdLine)
 
-			cmd := exec.Command("sh", "-c", cmdLine)
-			cmd.Stdout = os.Stdout
-			cmd.Stderr = os.Stderr
-			cmd.Env = os.Environ()
+		cmd := exec.Command("sh", "-c", cmdLine)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		cmd.Env = os.Environ()
 
-			if err := cmd.Run(); err != nil {
-				return nil, err
-			}
+		if err := cmd.Run(); err != nil {
+			return nil, err
 		}
 	} else {
 		view.SourceFileName = viewFileName
@@ -107,8 +104,6 @@ func PrepareView(queryName, viewName, viewFileName string) (view *View, err erro
 	if view.cb, ok = f.(func(*Results) Chart); !ok {
 		return nil, fmt.Errorf("can't cast %+v to func(*Results) Chart", f)
 	}
-
-	log.Debug("f = %+v", view.cb)
 
 	return view, nil
 }
