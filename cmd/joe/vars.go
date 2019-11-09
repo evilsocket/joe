@@ -8,7 +8,7 @@ import (
 var (
 	debug     = false
 	ver       = false
-	address   = "0.0.0.0:8080"
+	address   = "127.0.0.1:8080"
 	confFile  = "/etc/joe/joe.conf"
 	usersPath = "/etc/joe/users"
 	dataPath  = "/etc/joe/queries"

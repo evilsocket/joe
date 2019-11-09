@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/evilsocket/islazy/log"
+	"github.com/evilsocket/joe/api"
 	"github.com/evilsocket/joe/doc/templates"
 	"github.com/evilsocket/joe/models"
 	"os"
@@ -20,10 +21,23 @@ var funcMap = template.FuncMap{
 	},
 }
 
-func ToMarkdown(fileName string) (err error) {
-	log.Info("generating markdown documentation for %d queries to %s ...", models.NumQueries, fileName)
+func tpl(name string) (*template.Template, error) {
+	raw, err := templates.Asset(name)
+	if err != nil {
+		return nil, err
+	}
 
-	raw, err := templates.Asset("doc/templates/doc.md")
+	t, err := template.New(name).Funcs(funcMap).Parse(string(raw))
+	if err != nil {
+		return nil, err
+	}
+
+	return t, nil
+}
+
+func ToMarkdown(address, fileName string) (err error) {
+	log.Info("generating markdown documentation for %d queries to %s ...", models.NumQueries, fileName)
+	t, err := tpl("doc/templates/doc.md")
 	if err != nil {
 		return
 	}
@@ -34,16 +48,15 @@ func ToMarkdown(fileName string) (err error) {
 		return true
 	})
 
-	t, err := template.New("template").Funcs(funcMap).Parse(string(raw))
-	if err != nil {
-		return
-	}
-
 	out, err := os.Create(fileName)
 	if err != nil {
 		return
 	}
 	defer out.Close()
 
-	return t.Execute(out, map[string]interface{}{"Queries": queries})
+	return t.Execute(out, map[string]interface{}{
+		"Address": address,
+		"Version": api.Version,
+		"Queries": queries,
+	})
 }

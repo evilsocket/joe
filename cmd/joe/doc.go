@@ -7,7 +7,7 @@ import (
 
 func makeDoc() {
 	if docFormat == "markdown" {
-		if err := doc.ToMarkdown(docOutput); err != nil {
+		if err := doc.ToMarkdown(address, docOutput); err != nil {
 			log.Fatal("%v", err)
 		}
 	} else {

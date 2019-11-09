@@ -1,10 +1,6 @@
-# Joe Queries
+## Joe Queries
 
-This document has been automatically generated with [joe v1.0.0](https://github.com/evilsocket/joe).
-
-## Main
-
-These are the authentication and visualization generic endpoints.
+This document has been automatically generated with [joe v{{.Version}}](https://github.com/evilsocket/joe).
 
 ### GET|POST /api/v1/auth  
 
@@ -17,7 +13,7 @@ Authenticate to the API with username and password in order to get a JWT token.
 
 #### Request
 
-    curl --data "user=admin&pass=admin" http://localhost:8080/api/v1/auth
+    curl --data "user=admin&pass=admin" http://{{ .Address }}/api/v1/auth
 
 #### Response
 
@@ -33,7 +29,7 @@ Get a list of the queries that are currently loaded in the system.
 
 #### Request
 
-    curl -H "Authorization: Bearer ..token.." http://localhost:8080/api/v1/queries
+    curl -H "Authorization: Bearer ..token.." http://{{ .Address }}/api/v1/queries
 
 #### Response
 
@@ -65,6 +61,9 @@ Get a list of the queries that are currently loaded in the system.
   ...
 }
 ```
+
+{{ $address := .Address }}
+
 {{range .Queries}}
 
 ### GET /api/v1/query/{{.Name}}/view  
@@ -74,9 +73,9 @@ Show information about the {{.Name}} query.
 #### Request
 
 {{if .AuthRequired }}
-    curl -H "Authorization: Bearer ..token.." http://localhost:8080/api/v1/query/{{.Name}}/view
+    curl -H "Authorization: Bearer ..token.." http://{{ $address }}/api/v1/query/{{.Name}}/view
 {{else}}
-    curl http://localhost:8080/api/v1/query/{{.Name}}/view
+    curl http://{{ $address }}/api/v1/query/{{.Name}}/view
 {{end}}
 
 #### Response
@@ -99,9 +98,9 @@ Show information about the {{.Name}} query.
 #### Request
 
 {{if .AuthRequired }}
-    curl -H "Authorization: Bearer ..token.." http://localhost:8080/api/v1/query/{{.Name}}.json{{.QueryString}}
+    curl -H "Authorization: Bearer ..token.." http://{{ $address }}/api/v1/query/{{.Name}}.json{{.QueryString}}
 {{else}}
-    curl http://localhost:8080/api/v1/query/{{.Name}}.json
+    curl http://{{ $address }}/api/v1/query/{{.Name}}.json
 {{end}}
 
 #### Response
@@ -124,9 +123,9 @@ Return results for an EXPLAIN operation on the {{.Name}} main query.
 #### Request
 
 {{if .AuthRequired }}
-    curl -H "Authorization: Bearer ..token.." http://localhost:8080/api/v1/query/{{.Name}}/explain{{.QueryString}}
+    curl -H "Authorization: Bearer ..token.." http://{{ $address }}/api/v1/query/{{.Name}}/explain{{.QueryString}}
 {{else}}
-    curl http://localhost:8080/api/v1/query/{{.Name}}/explain{{.QueryString}}
+    curl http://{{ $address }}/api/v1/query/{{.Name}}/explain{{.QueryString}}
 {{end}}
 
 #### Response
@@ -175,9 +174,9 @@ Return a PNG or SVG representation of a {{$viewName}} chart for the {{$queryName
 #### Request
 
 {{if $queryAuthRequired }}
-    curl -H "Authorization: Bearer ..token.." http://localhost:8080/api/v1/query/{{$queryName}}/{{$viewName}}.png{{$queryString}}
+    curl -H "Authorization: Bearer ..token.." http://{{ $address }}/api/v1/query/{{$queryName}}/{{$viewName}}.png{{$queryString}}
 {{else}}
-    curl http://localhost:8080/api/v1/query/{{$queryName}}/{{$viewName}}.png{{$queryString}}
+    curl http://{{ $address }}/api/v1/query/{{$queryName}}/{{$viewName}}.png{{$queryString}}
 {{end}}
 
 {{end}}
