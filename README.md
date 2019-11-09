@@ -10,7 +10,7 @@ In a way it is an anti-[ORM](https://en.wikipedia.org/wiki/Object-relational_map
 ## How to Install
 
 ```sh
-go get -u https://github.com/evilsocket/joe/cmd/joe
+go get -u github.com/evilsocket/joe/cmd/joe
 ```
 
 ## Example
