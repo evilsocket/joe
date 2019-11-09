@@ -117,7 +117,11 @@ func (q *Query) load() error {
 	} else if len(q.Access) == 0 {
 		return fmt.Errorf("%s doens't declare an access section", q.Name)
 	} else {
-		q.CreatedAt = t.BirthTime()
+		if t.HasBirthTime() {
+			q.CreatedAt = t.BirthTime()
+		} else {
+			q.CreatedAt = time.Now()
+		}
 		q.UpdatedAt = t.ModTime()
 		q.Name = strings.ReplaceAll(path.Base(q.fileName), ".yml", "")
 
