@@ -41,7 +41,7 @@ func Cleanup() {
 
 func Setup(confFile, dataPath, usersPath string, compileViews bool) (err error) {
 	defer func() {
-		log.Info("users:%d queries:%d", NumUsers, NumQueries)
+		log.Debug("users:%d queries:%d", NumUsers, NumQueries)
 	}()
 
 	if err := godotenv.Load(confFile); err != nil {
@@ -64,7 +64,7 @@ func Setup(confFile, dataPath, usersPath string, compileViews bool) (err error) 
 		return
 	}
 
-	log.Info("loading users from %s ...", usersPath)
+	log.Debug("loading users from %s ...", usersPath)
 	err = fs.Glob(usersPath, "*.yml", func(fileName string) error {
 		if user, err := LoadUser(fileName); err != nil {
 			return fmt.Errorf("error while loading %s: %v", fileName, err)
@@ -91,7 +91,7 @@ func Setup(confFile, dataPath, usersPath string, compileViews bool) (err error) 
 		}
 	})
 
-	log.Info("loading data from %s ...", dataPath)
+	log.Debug("loading data from %s ...", dataPath)
 	err = fs.Glob(dataPath, "*.yml", func(fileName string) error {
 		queue.Add(async.Job(fileName))
 		return nil

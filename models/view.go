@@ -49,7 +49,7 @@ func PrepareView(queryName, viewName, viewFileName string, compile bool) (view *
 				return nil, fmt.Errorf("go not found, can't compile %s", viewFileName)
 			}
 
-			log.Info("compiling %s ...", viewFileName)
+			log.Debug("compiling %s ...", viewFileName)
 
 			cmdLine := fmt.Sprintf("%s build -buildmode=plugin -o '%s' '%s'",
 				goPath,
@@ -73,7 +73,7 @@ func PrepareView(queryName, viewName, viewFileName string, compile bool) (view *
 	}
 
 	if compile {
-		log.Info("loading view %s ...", view.NativeFileName)
+		log.Debug("loading view %s ...", view.NativeFileName)
 
 		if view.plugin, err = plugin.Open(view.NativeFileName); err != nil {
 			return nil, err

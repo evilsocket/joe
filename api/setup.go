@@ -55,17 +55,15 @@ func Setup() (err error, api *API) {
 }
 
 func (api *API) Run(addr string) {
-	log.Info("joe api starting on %s ...", addr)
+	log.Info("joe api v%s starting on %s ...", Version, addr)
 
 	models.Queries.Range(func(key, value interface{}) bool {
 		q := value.(*models.Query)
-		log.Info("  %s", tui.Dim(q.Expression))
-		log.Info("    http://%s/api/v1/query/%s(.json|csv)(/explain?)", addr, key)
-
+		log.Debug("  %s", tui.Dim(q.Expression))
+		log.Debug("    http://%s/api/v1/query/%s(.json|csv)(/explain?)", addr, key)
 		for name, _ := range q.Views {
-			log.Info("      http://%s/api/v1/query/%s/%s(.png|svg)", addr, key, name)
+			log.Debug("      http://%s/api/v1/query/%s/%s(.png|svg)", addr, key, name)
 		}
-
 		return true
 	})
 
