@@ -36,7 +36,7 @@ func Cleanup() {
 	}
 }
 
-func Setup(confFile, dataPath, usersPath string) (err error) {
+func Setup(confFile, dataPath, usersPath string, compileViews bool) (err error) {
 	defer func() {
 		log.Info("users:%d queries:%d", NumUsers, NumQueries)
 	}()
@@ -80,7 +80,7 @@ func Setup(confFile, dataPath, usersPath string) (err error) {
 	// its view files, run this in a workers queue in order to parallelize
 	queue := async.NewQueue(0, func(arg async.Job) {
 		fileName := arg.(string)
-		if query, err := LoadQuery(fileName); err != nil {
+		if query, err := LoadQuery(fileName, compileViews); err != nil {
 			log.Error("error while loading %s: %v", fileName, err)
 		} else {
 			Queries.Store(query.Name, query)

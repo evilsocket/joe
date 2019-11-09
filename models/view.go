@@ -26,7 +26,7 @@ type View struct {
 	cb     func(*Results) Chart
 }
 
-func PrepareView(queryName, viewName, viewFileName string) (view *View, err error) {
+func PrepareView(queryName, viewName, viewFileName string, compile bool) (view *View, err error) {
 	view = &View{
 		Name: viewName,
 	}
@@ -43,47 +43,51 @@ func PrepareView(queryName, viewName, viewFileName string) (view *View, err erro
 			queryName,
 			viewName))
 
-		goPath, err := exec.LookPath("go")
-		if err != nil {
-			return nil, fmt.Errorf("go not found, can't compile %s", viewFileName)
-		}
+		if compile {
+			goPath, err := exec.LookPath("go")
+			if err != nil {
+				return nil, fmt.Errorf("go not found, can't compile %s", viewFileName)
+			}
 
-		log.Info("compiling %s ...", viewFileName)
+			log.Info("compiling %s ...", viewFileName)
 
-		cmdLine := fmt.Sprintf("%s build -buildmode=plugin -o '%s' '%s'",
-			goPath,
-			view.NativeFileName,
-			view.SourceFileName)
+			cmdLine := fmt.Sprintf("%s build -buildmode=plugin -o '%s' '%s'",
+				goPath,
+				view.NativeFileName,
+				view.SourceFileName)
 
-		log.Debug("%s", cmdLine)
+			log.Debug("%s", cmdLine)
 
-		cmd := exec.Command("sh", "-c", cmdLine)
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		cmd.Env = os.Environ()
+			cmd := exec.Command("sh", "-c", cmdLine)
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+			cmd.Env = os.Environ()
 
-		if err := cmd.Run(); err != nil {
-			return nil, err
+			if err := cmd.Run(); err != nil {
+				return nil, err
+			}
 		}
 	} else {
 		view.SourceFileName = viewFileName
 		view.NativeFileName = viewFileName
 	}
 
-	log.Info("loading view %s ...", view.NativeFileName)
+	if compile {
+		log.Info("loading view %s ...", view.NativeFileName)
 
-	if view.plugin, err = plugin.Open(view.NativeFileName); err != nil {
-		return nil, err
-	}
+		if view.plugin, err = plugin.Open(view.NativeFileName); err != nil {
+			return nil, err
+		}
 
-	f, err := view.plugin.Lookup("View")
-	if err != nil {
-		return nil, err
-	}
+		f, err := view.plugin.Lookup("View")
+		if err != nil {
+			return nil, err
+		}
 
-	var ok bool
-	if view.cb, ok = f.(func(*Results) Chart); !ok {
-		return nil, fmt.Errorf("can't cast %+v to func(*Results) Chart", f)
+		var ok bool
+		if view.cb, ok = f.(func(*Results) Chart); !ok {
+			return nil, fmt.Errorf("can't cast %+v to func(*Results) Chart", f)
+		}
 	}
 
 	return view, nil

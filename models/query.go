@@ -30,24 +30,29 @@ type Query struct {
 	Views       map[string]string      `yaml:"views" json:"views"`
 	Access      []string               `yaml:"access" json:"access"`
 
-	access     map[string]*User
-	views      map[string]*View
-	fileName   string
-	statement  string
-	parameters map[string]int
-	numParams  int
-	prepared   *sql.Stmt
-	explainer  *Query
+	Parameters map[string]string `yaml:"-" json:"-"`
+
+	access        map[string]*User
+	views         map[string]*View
+	compiledViews bool
+	fileName      string
+	statement     string
+	parameters    map[string]int
+	numParams     int
+	prepared      *sql.Stmt
+	explainer     *Query
 }
 
-func LoadQuery(fileName string) (*Query, error) {
+func LoadQuery(fileName string, compileViews bool) (*Query, error) {
 	log.Debug("loading %s ...", fileName)
 
 	query := &Query{
-		fileName:   fileName,
-		parameters: make(map[string]int),
-		access:     make(map[string]*User),
-		views:      make(map[string]*View),
+		fileName:      fileName,
+		Parameters:    make(map[string]string),
+		parameters:    make(map[string]int),
+		access:        make(map[string]*User),
+		views:         make(map[string]*View),
+		compiledViews: compileViews,
 	}
 
 	if raw, err := ioutil.ReadFile(fileName); err != nil {
@@ -60,6 +65,23 @@ func LoadQuery(fileName string) (*Query, error) {
 	return query, nil
 }
 
+func (q *Query) QueryString() string {
+	parts := []string{}
+	for name, value := range q.Parameters {
+		if value == "" {
+			parts = append(parts, fmt.Sprintf("%s=VALUE", name))
+		} else {
+			parts = append(parts, fmt.Sprintf("%s=%s", name, value))
+		}
+	}
+
+	if len(parts) > 0 {
+		return fmt.Sprintf("?%s", strings.Join(parts, "&"))
+	} else {
+		return ""
+	}
+}
+
 func (q *Query) prepare() (err error) {
 	q.statement = q.Expression
 	for _, match := range paramParser.FindAllStringSubmatch(q.Expression, -1) {
@@ -67,6 +89,11 @@ func (q *Query) prepare() (err error) {
 		if _, found := q.parameters[par]; found {
 			return fmt.Errorf("token %s has been used more than once", tok)
 		} else {
+			if def, found := q.Defaults[par]; found {
+				q.Parameters[par] = fmt.Sprintf("%v", def)
+			} else {
+				q.Parameters[par] = ""
+			}
 			q.parameters[par] = q.numParams
 			q.numParams++
 			q.statement = strings.Replace(q.statement, tok, "?", 1)
@@ -117,6 +144,7 @@ func (q *Query) load() error {
 			Cache:      &CachePolicy{Type: None},
 			statement:  explain,
 			parameters: make(map[string]int),
+			Parameters: make(map[string]string),
 		}
 
 		if err := q.explainer.prepare(); err != nil {
@@ -130,7 +158,7 @@ func (q *Query) load() error {
 					viewFileName = path.Join(path.Dir(q.fileName), viewFileName)
 				}
 			}
-			if view, err := PrepareView(q.Name, viewName, viewFileName); err != nil {
+			if view, err := PrepareView(q.Name, viewName, viewFileName, q.compiledViews); err != nil {
 				return fmt.Errorf("%s: %v", viewName, err)
 			} else {
 				q.views[viewName] = view
@@ -167,9 +195,16 @@ func (q *Query) toQueryArgs(params map[string]interface{}) ([]interface{}, error
 	return args, nil
 }
 
-func (q *Query) Authorized(user *User) bool {
+func (q *Query) AuthRequired() bool {
 	// does allow anonymous access?
 	if _, found := q.access["anonymous"]; found {
+		return false
+	}
+	return true
+}
+
+func (q *Query) Authorized(user *User) bool {
+	if !q.AuthRequired() {
 		return true
 	}
 	// sanity check
