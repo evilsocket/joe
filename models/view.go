@@ -30,6 +30,24 @@ type View struct {
 	cb     func(*Results) Chart
 }
 
+func cleanAllBut(basePath, exclude, expr string) {
+	var err error
+	err = fs.Glob(basePath, expr, func(fileName string) error {
+		if fileName, err = filepath.Abs(fileName); err != nil {
+			return err
+		} else if fileName != exclude {
+			log.Debug("removing %s", fileName)
+			if err = os.Remove(fileName); err != nil {
+				log.Error("error removing %s: %v", fileName, err)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		log.Error("%v", err)
+	}
+}
+
 func PrepareView(queryName, viewName, viewFileName string) (view *View, err error) {
 	view = &View{
 		Name: viewName,
@@ -47,9 +65,9 @@ func PrepareView(queryName, viewName, viewFileName string) (view *View, err erro
 		if err != nil {
 			return
 		}
-
 		hash := sha256.New()
 		hash.Write(raw)
+
 		hex.EncodeToString(hash.Sum(nil))
 
 		view.SourceFileName = viewFileName
@@ -61,7 +79,8 @@ func PrepareView(queryName, viewName, viewFileName string) (view *View, err erro
 
 		// check if the file has already been compiled
 		if fs.Exists(view.NativeFileName) == false {
-			// TODO: check for older versions to remove
+			// check for older versions to remove
+			cleanAllBut(basePath, view.NativeFileName, "*.so")
 
 			goPath, err := exec.LookPath("go")
 			if err != nil {
