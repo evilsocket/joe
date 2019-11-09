@@ -25,7 +25,7 @@ Authenticate to the API with username and password in order to get a JWT token.
 
 ### GET /api/v1/queries/
 
-Get a list of the queries that are currently loaded in the system.
+Get a list of the queries that are currently loaded in the system and that the user can access.
 
 #### Request
 

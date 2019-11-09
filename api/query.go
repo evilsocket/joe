@@ -8,14 +8,18 @@ import (
 
 // GET /api/v1/queries/
 func (api *API) ListQueries(w http.ResponseWriter, r *http.Request) {
-	if user := getUser(r); user == nil {
+	user := getUser(r)
+	if user == nil {
 		ERROR(w, http.StatusUnauthorized, ErrEmpty)
 		return
 	}
 
 	queries := make([]*models.Query, 0)
 	models.Queries.Range(func(key, value interface{}) bool {
-		queries = append(queries, value.(*models.Query))
+		query := value.(*models.Query)
+		if query.Authorized(user) {
+			queries = append(queries, query)
+		}
 		return true
 	})
 
