@@ -50,6 +50,12 @@ Start the joe server:
 ```sh
 joe -conf /etc/joe/joe.conf -data /etc/joe/queries -users /etc/joe/users
 ```
+
+## Why the name Joe?        
+        
+The software is a very generic middleware that doesn't have a very specific business logic but adapts to the queries
+ and the data, so one of the most generic and short names looked like a good idea. You can also think about "Joe" as
+  that coworker you can always ask to run a query on the backend for you.
         
 ## License
 
