@@ -109,7 +109,7 @@ func (api *API) RunView(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
 			graph.Render(chart.PNG, w)
 		} else if viewExt == "svg" {
-			w.Header().Set("Content-Type", "image/svg")
+			w.Header().Set("Content-Type", "image/svg+xml")
 			w.WriteHeader(http.StatusOK)
 			graph.Render(chart.SVG, w)
 		} else {
